@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Aggregation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Federated Learning Server</h1>
+
+    <p>{{ result }}</p>
+
+    <form method="POST" action="/aggregate">
+        <button type="submit">Aggregate Model</button>
+    </form>
+
+    <form method="POST" action="/evaluate">
+        <button type="submit">Evaluate Model</button>
+    </form>
+</body>
+</html>
