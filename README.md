@@ -1,6 +1,3 @@
-Here's a simple README file template for your federated learning fault diagnostic model project:
-
-```markdown
 # Federated Learning for Global Fault Diagnostic Model
 
 ## Overview
@@ -80,4 +77,3 @@ Feel free to submit issues or pull requests if you would like to contribute to t
 
 This project is licensed under the MIT License.
 
-```
