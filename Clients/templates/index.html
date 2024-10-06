@@ -21,6 +21,10 @@
         <button type="submit" name="action" value="Get Global Weights">Get Global Weights</button>
         <button type="submit" name="action" value="Send Model to Server">Send Model to Server</button>
     </form>
+
+    {% if showplot %}
+        <img src="{{ url_for('plot_png') }}" alt="Training Graph" class="center">
+    {% endif %}
 </body>
 
 </html>

@@ -5,9 +5,15 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from cryptography.fernet import Fernet
+import json
+import base64
 
 app = Flask(__name__)
 CORS(app)
+
+key = b'A_5Mg2wyty1jnr4hxK3E7YvcuQSQBLV_qQqAKmkqwaM='
+fernet = Fernet(key)
 
 # Placeholder for client model weights
 client_model_weights = []
@@ -19,13 +25,37 @@ global_model = tf.keras.models.Sequential([
 
 def aggregate_models():
     global client_model_weights, global_model
-    # Aggregate by averaging weights across clients
-    if len(client_model_weights) == 0 :
+    
+    # Check if there are client weights to aggregate
+    if len(client_model_weights) == 0:
         return "Currently Not Possible!"
-    average_weights = [np.mean([weights[layer] for weights in client_model_weights], axis=0)
-                       for layer in range(len(client_model_weights[0]))]            
-    global_model.set_weights(average_weights)
-    return "Simple average aggregation completed!"
+    
+    # Weights for weighted averaging (based on each client's data size)
+    client_data_sizes = [3000, 3000, 3000, 3000]  # Example sizes for each client
+    total_data_size = sum(client_data_sizes)
+    normalized_weights = [size / total_data_size for size in client_data_sizes]
+    
+    # Aggregating the weights manually
+    aggregated_weights = []
+    
+    # Iterate through layers and aggregate
+    for layer in range(len(client_model_weights[0])):
+        # Ensure weights are NumPy arrays for each layer
+        layer_weight_sum = np.zeros_like(np.array(client_model_weights[0][layer]))
+        
+        # Perform weighted sum of each client's layer weights
+        for i, weights in enumerate(client_model_weights):
+            # Convert weights to NumPy arrays before multiplying
+            layer_weight_sum += normalized_weights[i] * np.array(weights[layer])
+        
+        # Add to aggregated weights
+        aggregated_weights.append(layer_weight_sum)
+    
+    # Set the global model weights
+    global_model.set_weights(aggregated_weights)
+    
+    return "Weighted average aggregation completed successfully!"
+
 
 # Evaluate the model
 def evaluate_aggregated_model(dataset_path):
@@ -61,18 +91,33 @@ def evaluate():
     result = evaluate_aggregated_model(dataset_path)
     return render_template('server_index.html', result=result)
 
+from flask import Flask, request
+import base64
+
 @app.route('/receive_model', methods=['POST'])
 def receive_model():
     global client_model_weights
-    received_weights = request.json['model_weights']
+    received_weights_encoded = request.json['model_weights']    
+    received_weights_bytes = base64.b64decode(received_weights_encoded)
+    decrypted_weights_json = fernet.decrypt(received_weights_bytes).decode('utf-8')
+    received_weights = json.loads(decrypted_weights_json)
+    
     client_model_weights.append(received_weights)
+    
+    if len(client_model_weights) > 4:
+        client_model_weights.pop(0)
+    
     return "Model weights received from client."
+
 
 @app.route('/send_global_weights', methods=['GET'])
 def send_global_weights():
     global global_model 
     weights_as_list = [w.tolist() for w in global_model.get_weights()]
-    return {"global_weights" : weights_as_list}
+    weights_json = json.dumps(weights_as_list)    
+    encrypted_data = fernet.encrypt(weights_json.encode())
+    encoded_data = base64.b64encode(encrypted_data).decode('utf-8')  # Convert to string    
+    return {"global_weights" : encoded_data}
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
